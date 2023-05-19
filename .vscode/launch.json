@@ -1,0 +1,138 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'beacon-api-client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=beacon-api-client"
+                ],
+                "filter": {
+                    "name": "beacon-api-client",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'beacon-api-client'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=beacon-api-client",
+                    "--package=beacon-api-client"
+                ],
+                "filter": {
+                    "name": "beacon-api-client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'beacon-api-client'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=beacon-api-client",
+                    "--package=beacon-api-client"
+                ],
+                "filter": {
+                    "name": "beacon-api-client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'post'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=post",
+                    "--package=beacon-api-client"
+                ],
+                "filter": {
+                    "name": "post",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'post'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=post",
+                    "--package=beacon-api-client"
+                ],
+                "filter": {
+                    "name": "post",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'sketch'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=sketch",
+                    "--package=beacon-api-client"
+                ],
+                "filter": {
+                    "name": "sketch",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'sketch'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=sketch",
+                    "--package=beacon-api-client"
+                ],
+                "filter": {
+                    "name": "sketch",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

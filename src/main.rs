@@ -3,7 +3,9 @@ use url::Url;
 
 #[tokio::main]
 async fn main() {
-    let s = "http://127.0.0.1:8003/";
+    // let s = "http://127.0.0.1:8003/";
+    let s = "https://beaconcha.in/";
+
     let url: Url = Url::parse(s).unwrap();
     let client = Client::new(url);
 

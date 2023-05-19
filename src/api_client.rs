@@ -72,11 +72,12 @@ async fn api_error_or_value<T: serde::de::DeserializeOwned>(
 pub struct Client {
     http: reqwest::Client,
     endpoint: Url,
+    path_prefix: String,
 }
 
 impl Client {
     pub fn new_with_client<U: Into<Url>>(client: reqwest::Client, endpoint: U) -> Self {
-        Self { http: client, endpoint: endpoint.into() }
+        Self { http: client, endpoint: endpoint.into(), path_prefix: String::from("eth") }
     }
 
     pub fn new<U: Into<Url>>(endpoint: U) -> Self {
@@ -122,18 +123,19 @@ impl Client {
 
     /* beacon namespace */
     pub async fn get_genesis_details(&self) -> Result<GenesisDetails, Error> {
-        let details: Value<GenesisDetails> = self.get("eth/v1/beacon/genesis").await?;
+        let path = format!("{}/v1/beacon/genesis", self.path_prefix);
+        let details: Value<GenesisDetails> = self.get(&path).await?;
         Ok(details.data)
     }
 
     pub async fn get_state_root(&self, state_id: StateId) -> Result<Root, Error> {
-        let path = format!("eth/v1/beacon/states/{state_id}/root");
+        let path = format!("{}/v1/beacon/states/{state_id}/root", self.path_prefix);
         let root: Value<RootData> = self.get(&path).await?;
         Ok(root.data.root)
     }
 
     pub async fn get_fork(&self, state_id: StateId) -> Result<Fork, Error> {
-        let path = format!("eth/v1/beacon/states/{state_id}/fork");
+        let path = format!("{}/v1/beacon/states/{state_id}/fork", self.path_prefix);
         let result: Value<Fork> = self.get(&path).await?;
         Ok(result.data)
     }
@@ -142,7 +144,7 @@ impl Client {
         &self,
         id: StateId,
     ) -> Result<FinalityCheckpoints, Error> {
-        let path = format!("eth/v1/beacon/states/{id}/finality_checkpoints");
+        let path = format!("{}/v1/beacon/states/{id}/finality_checkpoints", self.path_prefix);
         let result: Value<FinalityCheckpoints> = self.get(&path).await?;
         Ok(result.data)
     }
@@ -153,7 +155,7 @@ impl Client {
         validator_ids: &[PublicKeyOrIndex],
         filters: &[ValidatorStatus],
     ) -> Result<Vec<ValidatorSummary>, Error> {
-        let path = format!("eth/v1/beacon/states/{state_id}/validators");
+        let path = format!("{}/v1/beacon/states/{state_id}/validators", self.path_prefix);
         let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         if !validator_ids.is_empty() {
@@ -178,7 +180,7 @@ impl Client {
         state_id: StateId,
         validator_id: PublicKeyOrIndex,
     ) -> Result<ValidatorSummary, Error> {
-        let path = format!("eth/v1/beacon/states/{state_id}/validators/{validator_id}");
+        let path = format!("{}/v1/beacon/states/{state_id}/validators/{validator_id}", self.path_prefix);
         let result: Value<ValidatorSummary> = self.get(&path).await?;
         Ok(result.data)
     }
@@ -188,7 +190,7 @@ impl Client {
         id: StateId,
         filters: &[PublicKeyOrIndex],
     ) -> Result<Vec<BalanceSummary>, Error> {
-        let path = format!("eth/v1/beacon/states/{id}/validator_balances");
+        let path = format!("{}/v1/beacon/states/{id}/validator_balances", self.path_prefix);
         let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
 
@@ -214,7 +216,7 @@ impl Client {
         id: StateId,
         filter: CommitteeFilter,
     ) -> Result<Vec<CommitteeSummary>, Error> {
-        let path = format!("eth/v1/beacon/states/{id}/committees");
+        let path = format!("{}/v1/beacon/states/{id}/committees", self.path_prefix);
         let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         if let Some(epoch) = filter.epoch {
@@ -239,7 +241,7 @@ impl Client {
         id: StateId,
         epoch: Option<Epoch>,
     ) -> Result<Vec<SyncCommitteeSummary>, Error> {
-        let path = format!("eth/v1/beacon/states/{id}/sync_committees");
+        let path = format!("{}/v1/beacon/states/{id}/sync_committees", self.path_prefix);
         let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         if let Some(epoch) = epoch {
@@ -254,7 +256,8 @@ impl Client {
     }
 
     pub async fn get_beacon_header_at_head(&self) -> Result<BeaconHeaderSummary, Error> {
-        let result: Value<BeaconHeaderSummary> = self.get("eth/v1/beacon/headers").await?;
+        let path = format!("{}/v1/beacon/headers", self.path_prefix);
+        let result: Value<BeaconHeaderSummary> = self.get(&path).await?;
         Ok(result.data)
     }
 
@@ -262,7 +265,8 @@ impl Client {
         &self,
         slot: Slot,
     ) -> Result<BeaconHeaderSummary, Error> {
-        let target = self.endpoint.join("eth/v1/beacon/headers")?;
+        let path = format!("{}/v1/beacon/headers", self.path_prefix);
+        let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         request = request.query(&[("slot", slot)]);
         let response = request.send().await?;
@@ -277,7 +281,8 @@ impl Client {
         &self,
         parent_root: Root,
     ) -> Result<BeaconHeaderSummary, Error> {
-        let target = self.endpoint.join("eth/v1/beacon/headers")?;
+        let path = format!("{}/v1/beacon/headers", self.path_prefix);
+        let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         request = request.query(&[("parent_root", parent_root)]);
         let response = request.send().await?;
@@ -289,31 +294,35 @@ impl Client {
     }
 
     pub async fn get_beacon_header(&self, id: BlockId) -> Result<BeaconHeaderSummary, Error> {
-        let path = format!("eth/v1/beacon/headers/{id}");
+        let path = format!("{}/v1/beacon/headers/{id}", self.path_prefix);
         let result: Value<BeaconHeaderSummary> = self.get(&path).await?;
         Ok(result.data)
     }
 
     pub async fn post_signed_beacon_block(&self, block: &SignedBeaconBlock) -> Result<(), Error> {
-        self.post("eth/v1/beacon/blocks", block).await
+        let path = format!("{}/v1/beacon/blocks", self.path_prefix);
+        self.post(&path, block).await
     }
 
     pub async fn post_signed_blinded_beacon_block(
         &self,
         block: &SignedBlindedBeaconBlock,
     ) -> Result<(), Error> {
-        self.post("eth/v1/beacon/blinded_blocks", block).await
+        let path = format!("{}/v1/beacon/blinded_blocks", self.path_prefix);
+        self.post(&path, block).await
     }
 
     // v2 endpoint
     pub async fn get_beacon_block(&self, id: BlockId) -> Result<SignedBeaconBlock, Error> {
+        let path = format!("{}/v1/beacon/blocks/{id}", self.path_prefix);
         let result: Value<SignedBeaconBlock> =
-            self.get(&format!("eth/v2/beacon/blocks/{id}")).await?;
+            self.get(&path).await?;
         Ok(result.data)
     }
 
     pub async fn get_beacon_block_root(&self, id: BlockId) -> Result<Root, Error> {
-        let result: Value<RootData> = self.get(&format!("eth/v1/beacon/blocks/{id}/root")).await?;
+        let path = format!("{}/v1/beacon/blocks/{id}/root", self.path_prefix);
+        let result: Value<RootData> = self.get(&path).await?;
         Ok(result.data.root)
     }
 
@@ -321,8 +330,9 @@ impl Client {
         &self,
         id: BlockId,
     ) -> Result<Vec<Attestation>, Error> {
+        let path = format!("{}/v1/beacon/blocks/{id}/attestations", self.path_prefix);
         let result: Value<Vec<Attestation>> =
-            self.get(&format!("eth/v1/beacon/blocks/{id}/attestations")).await?;
+            self.get(&path).await?;
         Ok(result.data)
     }
 
@@ -331,8 +341,8 @@ impl Client {
         slot: Option<Slot>,
         committee_index: Option<CommitteeIndex>,
     ) -> Result<Vec<Attestation>, Error> {
-        let path = "eth/v1/beacon/pool/attestations";
-        let target = self.endpoint.join(path)?;
+        let path = format!("{}/v1/beacon/pool/attestations", self.path_prefix);
+        let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         if let Some(slot) = slot {
             request = request.query(&[("slot", slot)]);
@@ -349,12 +359,14 @@ impl Client {
     }
 
     pub async fn post_attestations(&self, attestations: &[Attestation]) -> Result<(), Error> {
-        self.post("eth/v1/beacon/pool/attestations", attestations).await
+        let path = format!("{}/v1/beacon/pool/attestations", self.path_prefix);
+        self.post(&path, attestations).await
     }
 
     pub async fn get_attester_slashings_from_pool(&self) -> Result<Vec<AttesterSlashing>, Error> {
+        let path = format!("{}/v1/beacon/pool/attester_slashings", self.path_prefix);
         let result: Value<Vec<AttesterSlashing>> =
-            self.get("eth/v1/beacon/pool/attester_slashings").await?;
+            self.get(&path).await?;
         Ok(result.data)
     }
 
@@ -362,12 +374,14 @@ impl Client {
         &self,
         attester_slashing: &AttesterSlashing,
     ) -> Result<(), Error> {
-        self.post("eth/v1/beacon/pool/attester_slashings", attester_slashing).await
+        let path = format!("{}/v1/beacon/pool/attester_slashings", self.path_prefix);
+        self.post(&path, attester_slashing).await
     }
 
     pub async fn get_proposer_slashings_from_pool(&self) -> Result<Vec<ProposerSlashing>, Error> {
+        let path = format!("{}/v1/beacon/pool/proposer_slashings", self.path_prefix);
         let result: Value<Vec<ProposerSlashing>> =
-            self.get("eth/v1/beacon/pool/proposer_slashings").await?;
+            self.get(&path).await?;
         Ok(result.data)
     }
 
@@ -375,19 +389,22 @@ impl Client {
         &self,
         proposer_slashing: &ProposerSlashing,
     ) -> Result<(), Error> {
-        self.post("eth/v1/beacon/pool/proposer_slashings", proposer_slashing).await
+        let path = format!("{}/v1/beacon/pool/proposer_slashings", self.path_prefix);
+        self.post(&path, proposer_slashing).await
     }
 
     pub async fn post_sync_committee_messages(
         &self,
         messages: &[SyncCommitteeMessage],
     ) -> Result<(), Error> {
-        self.post("eth/v1/beacon/pool/sync_committees", messages).await
+        let path = format!("{}/v1/beacon/pool/sync_committees", self.path_prefix);
+        self.post(&path, messages).await
     }
 
     pub async fn get_voluntary_exits_from_pool(&self) -> Result<Vec<SignedVoluntaryExit>, Error> {
+        let path = format!("{}/v1/beacon/pool/voluntary_exits", self.path_prefix);
         let result: Value<Vec<SignedVoluntaryExit>> =
-            self.get("eth/v1/beacon/pool/voluntary_exits").await?;
+            self.get(&path).await?;
         Ok(result.data)
     }
 
@@ -395,37 +412,43 @@ impl Client {
         &self,
         exit: &SignedVoluntaryExit,
     ) -> Result<(), Error> {
-        self.post("eth/v1/beacon/pool/voluntary_exits", exit).await
+        let path = format!("{}/v1/beacon/pool/voluntary_exits", self.path_prefix);
+        self.post(&path, exit).await
     }
 
     /* config namespace */
     pub async fn get_fork_schedule(&self) -> Result<Vec<Fork>, Error> {
-        let result: Value<Vec<Fork>> = self.get("eth/v1/config/fork_schedule").await?;
+        let path = format!("{}/v1/config/fork_schedule", self.path_prefix);
+        let result: Value<Vec<Fork>> = self.get(&path).await?;
         Ok(result.data)
     }
 
     pub async fn get_spec(&self) -> Result<HashMap<String, String>, Error> {
-        let result: Value<HashMap<String, String>> = self.get("eth/v1/config/spec").await?;
+        let path = format!("{}/v1/config/spec", self.path_prefix);
+        let result: Value<HashMap<String, String>> = self.get(&path).await?;
         Ok(result.data)
     }
 
     pub async fn get_deposit_contract_address(&self) -> Result<DepositContract, Error> {
-        let result: Value<DepositContract> = self.get("eth/v1/config/deposit_contract").await?;
+        let path = format!("{}/v1/config/deposit_contract", self.path_prefix);
+        let result: Value<DepositContract> = self.get(&path).await?;
         Ok(result.data)
     }
 
     /* debug namespace */
     // v2 endpoint
     pub async fn get_state(&self, id: StateId) -> Result<BeaconState, Error> {
+        let path = format!("{}/v2/debug/beacon/states/{id}", self.path_prefix);
         let result: Value<BeaconState> =
-            self.get(&format!("eth/v2/debug/beacon/states/{id}")).await?;
+            self.get(&path).await?;
         Ok(result.data)
     }
 
     // v2 endpoint
     pub async fn get_heads(&self) -> Result<Vec<CoordinateWithMetadata>, Error> {
+        let path = format!("{}/v2/debug/beacon/heads", self.path_prefix);
         let result: Value<Vec<CoordinateWithMetadata>> =
-            self.get("eth/v2/debug/beacon/heads").await?;
+            self.get(&path).await?;
         Ok(result.data)
     }
 
@@ -438,7 +461,8 @@ impl Client {
 
     /* node namespace */
     pub async fn get_node_identity(&self) -> Result<NetworkIdentity, Error> {
-        let result: Value<NetworkIdentity> = self.get("eth/v1/node/identity").await?;
+        let path = format!("{}/v1/node/identity", self.path_prefix);
+        let result: Value<NetworkIdentity> = self.get(&path).await?;
         Ok(result.data)
     }
 
@@ -447,8 +471,8 @@ impl Client {
         peer_states: &[PeerState],
         connection_orientations: &[ConnectionOrientation],
     ) -> Result<Vec<PeerDescription>, Error> {
-        let path = "eth/v1/node/peers";
-        let target = self.endpoint.join(path)?;
+        let path = format!("{}/v1/node/peers", self.path_prefix);
+        let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         if !peer_states.is_empty() {
             request = request.query(&[("state", peer_states.iter().join(","))]);
@@ -471,23 +495,26 @@ impl Client {
     }
 
     pub async fn get_peer_summary(&self) -> Result<PeerSummary, Error> {
-        let result: Value<PeerSummary> = self.get("eth/v1/node/peer_count").await?;
+        let path = format!("{}/v1/node/peer_count", self.path_prefix);
+        let result: Value<PeerSummary> = self.get(&path).await?;
         Ok(result.data)
     }
 
     pub async fn get_node_version(self) -> Result<String, Error> {
-        let result: Value<VersionData> = self.get("eth/v1/node/version").await?;
+        let path = format!("{}/v1/node/version", self.path_prefix);
+        let result: Value<VersionData> = self.get(&path).await?;
         Ok(result.data.version)
     }
 
     pub async fn get_sync_status(&self) -> Result<SyncStatus, Error> {
-        let result: Value<SyncStatus> = self.get("eth/v1/node/syncing").await?;
+        let path = format!("{}/v1/node/syncing", self.path_prefix);
+        let result: Value<SyncStatus> = self.get(&path).await?;
         Ok(result.data)
     }
 
     pub async fn get_health(&self) -> Result<HealthStatus, Error> {
-        let path = "eth/v1/node/health";
-        let target = self.endpoint.join(path)?;
+        let path = format!("{}/v1/node/health", self.path_prefix);
+        let target = self.endpoint.join(&path)?;
         let request = self.http.get(target);
         let response = request.send().await?;
         let result = match response.status() {
@@ -505,7 +532,7 @@ impl Client {
         epoch: Epoch,
         indices: &[ValidatorIndex],
     ) -> Result<(Root, Vec<AttestationDuty>), Error> {
-        let endpoint = format!("eth/v1/validator/duties/attester/{epoch}");
+        let endpoint = format!("{}/v1/validator/duties/attester/{epoch}", self.path_prefix);
         let indices = indices.iter().map(|index| index.to_string()).collect::<Vec<_>>();
         let response = self.http_post(&endpoint, &indices).await?;
         let mut result: Value<Vec<AttestationDuty>> = api_error_or_value(response).await?;
@@ -521,7 +548,7 @@ impl Client {
         &self,
         epoch: Epoch,
     ) -> Result<(Root, Vec<ProposerDuty>), Error> {
-        let endpoint = format!("eth/v1/validator/duties/proposer/{epoch}");
+        let endpoint = format!("{}/v1/validator/duties/proposer/{epoch}", self.path_prefix);
         let mut result: Value<Vec<ProposerDuty>> = self.get(&endpoint).await?;
         let dependent_root_value = result.meta.remove("dependent_root").ok_or_else(|| {
             Error::MissingExpectedData("missing `dependent_root` in response".to_string())
@@ -535,7 +562,7 @@ impl Client {
         epoch: Epoch,
         indices: &[ValidatorIndex],
     ) -> Result<Vec<SyncCommitteeDuty>, Error> {
-        let endpoint = format!("eth/v1/validator/duties/sync/{epoch}");
+        let endpoint = format!("{}/v1/validator/duties/sync/{epoch}", self.path_prefix);
         let indices = indices.iter().map(|index| index.to_string()).collect::<Vec<_>>();
         let response = self.http_post(&endpoint, &indices).await?;
         let result: Value<Vec<SyncCommitteeDuty>> = api_error_or_value(response).await?;
@@ -549,7 +576,7 @@ impl Client {
         randao_reveal: RandaoReveal,
         graffiti: Option<Bytes32>,
     ) -> Result<BeaconBlock, Error> {
-        let path = format!("eth/v2/validator/blocks/{slot}");
+        let path = format!("{}/v2/validator/blocks/{slot}", self.path_prefix);
         let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         request = request.query(&[("randao_reveal", randao_reveal)]);
@@ -571,7 +598,7 @@ impl Client {
         randao_reveal: RandaoReveal,
         graffiti: Option<Bytes32>,
     ) -> Result<BlindedBeaconBlock, Error> {
-        let path = format!("eth/v2/validator/blinded_blocks/{slot}");
+        let path = format!("{}/v2/validator/blinded_blocks/{slot}", self.path_prefix);
         let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         request = request.query(&[("randao_reveal", randao_reveal)]);
@@ -592,7 +619,8 @@ impl Client {
         slot: Slot,
         committee_index: CommitteeIndex,
     ) -> Result<AttestationData, Error> {
-        let target = self.endpoint.join("eth/v1/validator/attestation_data")?;
+        let path = format!("{}/v1/validator/attestation_data", self.path_prefix);
+        let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         request = request.query(&[("slot", slot)]);
         request = request.query(&[("committee_index", committee_index)]);
@@ -609,7 +637,8 @@ impl Client {
         attestation_data_root: Root,
         slot: Slot,
     ) -> Result<Attestation, Error> {
-        let target = self.endpoint.join("eth/v1/validator/aggregate_attestation")?;
+        let path = format!("{}/v1/validator/aggregate_attestation", self.path_prefix);
+        let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         request = request.query(&[("attestation_data_root", attestation_data_root)]);
         request = request.query(&[("slot", slot)]);
@@ -625,21 +654,24 @@ impl Client {
         &self,
         aggregates_with_proofs: &[SignedAggregateAndProof],
     ) -> Result<(), Error> {
-        self.post("eth/v1/validator/aggregate_and_proofs", aggregates_with_proofs).await
+        let path = format!("{}/v1/validator/aggregate_and_proofs", self.path_prefix);
+        self.post(&path, aggregates_with_proofs).await
     }
 
     pub async fn subscribe_subnets_for_attestation_committees(
         &self,
         committee_descriptors: &[CommitteeDescriptor],
     ) -> Result<(), Error> {
-        self.post("eth/v1/validator/beacon_committee_subscriptions", committee_descriptors).await
+        let path = format!("{}/v1/validator/beacon_committee_subscriptions", self.path_prefix);
+        self.post(&path, committee_descriptors).await
     }
 
     pub async fn subscribe_subnets_for_sync_committees(
         &self,
         sync_committee_descriptors: &[SyncCommitteeDescriptor],
     ) -> Result<(), Error> {
-        self.post("eth/v1/validator/sync_committee_subscriptions", sync_committee_descriptors).await
+        let path = format!("{}/v1/validator/sync_committee_subscriptions", self.path_prefix);
+        self.post(&path, sync_committee_descriptors).await
     }
 
     pub async fn get_sync_committee_contribution(
@@ -648,7 +680,8 @@ impl Client {
         subcommittee_index: usize,
         beacon_block_root: Root,
     ) -> Result<SyncCommitteeContribution, Error> {
-        let target = self.endpoint.join("eth/v1/validator/sync_committee_contribution")?;
+        let path = format!("{}/v1/validator/sync_committee_contribution", self.path_prefix);
+        let target = self.endpoint.join(&path)?;
         let mut request = self.http.get(target);
         request = request.query(&[("slot", slot)]);
         request = request.query(&[("subcommittee_index", subcommittee_index)]);
@@ -665,14 +698,16 @@ impl Client {
         &self,
         contributions_with_proofs: &[SignedContributionAndProof],
     ) -> Result<(), Error> {
-        self.post("eth/v1/validator/contribution_and_proofs", contributions_with_proofs).await
+        let path = format!("{}/v1/validator/contribution_and_proofs", self.path_prefix);
+        self.post(&path, contributions_with_proofs).await
     }
 
     pub async fn prepare_proposers(
         &self,
         registrations: &[BeaconProposerRegistration],
     ) -> Result<(), Error> {
-        self.post("eth/v1/validator/prepare_beacon_proposer", registrations).await
+        let path = format!("{}/v1/validator/prepare_beacon_proposer", self.path_prefix);
+        self.post(&path, registrations).await
     }
 
     // endpoint for builder registrations
@@ -680,6 +715,7 @@ impl Client {
         &self,
         registrations: &[SignedValidatorRegistration],
     ) -> Result<(), Error> {
-        self.post("eth/v1/validator/register_validator", registrations).await
+        let path = format!("{}/v1/validator/register_validator", self.path_prefix);
+        self.post(&path, registrations).await
     }
 }
